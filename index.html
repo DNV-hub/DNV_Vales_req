@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Vales de Requerimiento | Talud</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;min-height:100vh}
+:root{
+  --blue:#1e3a5f;--blue-mid:#2563a8;--blue-light:#dbeafe;
+  --green:#166534;--green-mid:#16a34a;--green-bg:#dcfce7;
+  --orange:#9a3412;--orange-mid:#ea580c;--orange-bg:#ffedd5;
+  --red:#dc2626;--red-dark:#991b1b;--red-bg:#fee2e2;
+  --amber:#92400e;--amber-bg:#fef3c7;
+  --gray:#374151;--gray2:#6b7280;
+  --border:#e5e7eb;--radius:10px
+}
+.app{max-width:520px;margin:0 auto;background:#fff;min-height:100vh;display:flex;flex-direction:column}
+
+/* HEADER */
+.hdr{background:var(--blue);color:#fff;padding:16px 18px 14px}
+.hdr-row{display:flex;align-items:center;gap:10px}
+.hdr-icon{width:40px;height:40px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.hdr h1{font-size:16px;font-weight:700;line-height:1.2}
+.hdr p{font-size:11px;opacity:.7;margin-top:2px}
+.hdr-badges{display:flex;gap:5px;margin-left:auto;flex-shrink:0}
+.badge{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.18);color:#fff;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;cursor:pointer}
+.badge:hover{background:rgba(255,255,255,.28)}
+.badge.pend{background:rgba(251,191,36,.35)}
+.badge.pend:hover{background:rgba(251,191,36,.5)}
+
+/* TABS */
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;background:#fff;border-bottom:1.5px solid var(--border);position:sticky;top:0;z-index:10}
+.tab{padding:11px 4px;text-align:center;font-size:11px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;color:#9ca3af;transition:all .18s;text-transform:uppercase;letter-spacing:.4px}
+.tab.active-req{color:var(--blue-mid);border-color:var(--blue-mid);background:#f0f7ff}
+.tab.active-ret{color:var(--orange-mid);border-color:var(--orange-mid);background:#fff7ed}
+.tab.active-lst{color:var(--green);border-color:var(--green);background:#f0fdf4}
+
+/* PANEL */
+.panel{padding:18px;display:flex;flex-direction:column}
+.panel.hidden{display:none}
+.slabel{font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.8px;text-transform:uppercase;margin-bottom:7px;margin-top:18px}
+.slabel:first-child{margin-top:0}
+
+/* FIELDS */
+.field{margin-bottom:13px}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--gray);margin-bottom:4px}
+.req{color:var(--red);margin-left:1px}
+input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);
+  font-size:14px;color:var(--gray);background:#fff;outline:none;transition:border .15s;
+  -webkit-appearance:none;font-family:inherit
+}
+input:focus,select:focus,textarea:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(37,99,168,.1)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+select:disabled{background-color:#f3f4f6;color:#9ca3af;cursor:not-allowed;opacity:.7}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* VALE NUM BOX */
+.vale-num-box{border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.vale-num-box.req{background:var(--blue-light);border:2px solid var(--blue-mid)}
+.vale-num-box.ret{background:var(--orange-bg);border:2px solid var(--orange-mid)}
+.vale-num-ico{font-size:20px}
+.vale-num-lbl{font-size:11px;font-weight:600;letter-spacing:.3px}
+.vale-num-box.req .vale-num-lbl{color:var(--blue)}
+.vale-num-box.ret .vale-num-lbl{color:var(--orange)}
+.vale-num-val{font-size:18px;font-weight:800;font-family:monospace;letter-spacing:1px}
+.vale-num-box.req .vale-num-val{color:var(--blue-mid)}
+.vale-num-box.ret .vale-num-val{color:var(--orange-mid)}
+
+/* ESTADO PILL */
+.est-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 9px;border-radius:12px;letter-spacing:.4px;white-space:nowrap}
+.est-pill.PENDIENTE{background:var(--amber-bg);color:var(--amber)}
+.est-pill.AUTORIZADO{background:var(--green-bg);color:var(--green)}
+.est-pill.RECHAZADO{background:var(--red-bg);color:var(--red-dark)}
+
+/* INFO BOX pendiente */
+.info-pend{display:flex;align-items:flex-start;gap:10px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:var(--radius);padding:11px 13px;margin-top:0;margin-bottom:16px}
+.info-pend-ico{font-size:20px;flex-shrink:0}
+.info-pend-txt{font-size:12px;color:#78350f;line-height:1.7}
+.info-pend-txt b{color:#92400e;font-weight:700}
+
+/* LINES */
+.lines-wrap{margin-bottom:6px}
+.lines-hdr{display:grid;grid-template-columns:1fr 90px 70px 32px;gap:6px;padding:5px 8px;background:#f3f4f6;border-radius:8px 8px 0 0;font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.4px;text-transform:uppercase}
+.line-row{display:grid;grid-template-columns:1fr 90px 70px 32px;gap:6px;padding:5px 6px;border-bottom:1px solid #f3f4f6;align-items:center}
+.line-row:last-child{border-bottom:none}
+.line-row.filled{background:#f9fafb}
+.line-mat-wrap{position:relative}
+.line-mat-search{width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;color:var(--gray);background:#fff;outline:none;font-family:inherit}
+.line-mat-search:focus{border-color:var(--blue-mid);box-shadow:0 0 0 2px rgba(37,99,168,.08)}
+.line-mat-search.selected{border-color:var(--blue-mid);background:var(--blue-light);font-weight:600;color:var(--blue)}
+.line-drop{max-height:190px;overflow-y:auto;border:1.5px solid var(--blue-mid);border-top:none;border-radius:0 0 8px 8px;background:#fff;display:none;position:absolute;width:240px;z-index:50;box-shadow:0 4px 14px rgba(0,0,0,.13);left:0;top:100%}
+.line-drop.open{display:block}
+.line-drop-item{padding:8px 10px;cursor:pointer;border-bottom:1px solid #f3f4f6;transition:background .1s}
+.line-drop-item:hover{background:#f0f7ff}
+.line-drop-item:last-child{border-bottom:none}
+.ldi-code{font-size:10px;color:var(--blue-mid);font-weight:700;font-family:monospace}
+.ldi-name{font-size:12px;color:var(--gray);margin-top:1px}
+.ldi-cat{font-size:10px;color:#9ca3af}
+.line-unit{padding:7px 6px;border:1.5px solid var(--border);border-radius:7px;font-size:11px;color:#6b7280;background:#f3f4f6;text-align:center;font-weight:600}
+.line-qty{width:100%;padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;color:var(--gray);background:#fff;outline:none;font-family:inherit;text-align:right}
+.line-qty:focus{border-color:var(--blue-mid)}
+.line-qty:disabled{background:#f9fafb;color:#d1d5db}
+.line-del{background:none;border:none;color:#d1d5db;cursor:pointer;font-size:14px;padding:4px;border-radius:5px;line-height:1;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.line-del:hover{color:var(--red);background:var(--red-bg)}
+.add-line-btn{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#fff;border:1.5px dashed #9ca3af;border-radius:var(--radius);font-size:12px;font-weight:600;color:#6b7280;cursor:pointer;transition:all .15s;width:100%;margin-top:4px;margin-bottom:2px}
+.add-line-btn:hover{border-color:var(--blue-mid);color:var(--blue-mid);background:var(--blue-light)}
+.lines-count{font-size:11px;color:#9ca3af;text-align:right;margin-bottom:4px}
+
+/* ERRORS */
+.err{font-size:11px;color:var(--red);margin-top:3px;display:none}
+.err.show{display:block}
+
+/* BUTTONS */
+.btn{width:100%;padding:13px;color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px}
+.btn-req{background:var(--blue-mid)}.btn-req:hover{background:var(--blue);transform:translateY(-1px)}
+.btn-ret{background:var(--orange-mid)}.btn-ret:hover{background:var(--orange);transform:translateY(-1px)}
+.btn:active{transform:translateY(0)!important}
+.note{font-size:11px;color:#9ca3af;text-align:center;margin-top:8px}
+
+/* LIST */
+.list-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.list-hdr h2{font-size:15px;font-weight:700;color:var(--gray);flex:1}
+.btn-exp{padding:7px 14px;background:var(--green-mid);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer}
+.btn-exp:hover{opacity:.88}
+.filter-row{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap}
+.filter-row select{flex:1;min-width:100px;padding:8px 10px;font-size:12px}
+.empty{text-align:center;padding:32px 0;color:#9ca3af;font-size:14px;line-height:1.8}
+
+/* VALE CARD */
+.vale-card{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;background:#fff;overflow:hidden}
+.vale-card.REQ{border-left:4px solid var(--blue-mid)}
+.vale-card.RET{border-left:4px solid var(--orange-mid)}
+.vale-card.estado-RECHAZADO{opacity:.65}
+.vale-card-hdr{display:flex;align-items:center;gap:7px;padding:10px 12px 8px;cursor:pointer;user-select:none}
+.vale-card-hdr:hover{background:#f9fafb}
+.tipo-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;letter-spacing:.5px;flex-shrink:0}
+.tipo-pill.REQ{background:var(--blue-light);color:var(--blue-mid)}
+.tipo-pill.RET{background:var(--orange-bg);color:var(--orange-mid)}
+.vale-code{font-size:13px;font-weight:800;color:var(--gray);font-family:monospace}
+.vale-date{font-size:11px;color:#9ca3af;white-space:nowrap}
+.chevron{font-size:12px;color:#9ca3af;transition:transform .2s;margin-left:auto;flex-shrink:0}
+.chevron.open{transform:rotate(180deg)}
+.vale-card-body{padding:0 12px 11px;display:none}
+.vale-card-body.open{display:block}
+.vale-meta{font-size:11px;color:#6b7280;line-height:1.9;margin-bottom:8px}
+.vale-meta b{color:var(--gray);font-weight:600}
+.vale-mats-title{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.vale-mat-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:12px}
+.vale-mat-row:last-child{border-bottom:none}
+.vmat-num{font-size:10px;color:#9ca3af;width:16px;text-align:right;flex-shrink:0}
+.vmat-code{font-family:monospace;font-size:10px;font-weight:700;color:var(--blue-mid);flex-shrink:0}
+.vmat-name{flex:1;color:var(--gray);line-height:1.3}
+.vmat-qty{font-weight:800;color:var(--gray);white-space:nowrap}
+.vmat-unit{font-size:10px;color:#9ca3af;margin-left:2px}
+
+/* AUTORIZACIÓN en card */
+.aut-box{margin-top:10px;border-top:1px solid var(--border);padding-top:10px}
+.aut-who{font-size:11px;color:#6b7280;margin-bottom:4px}
+.aut-who b{color:var(--gray)}
+.aut-fecha{font-size:10px;color:#9ca3af}
+.aut-rechazado-motivo{font-size:11px;color:var(--red-dark);background:var(--red-bg);border-radius:6px;padding:6px 9px;margin-top:5px}
+
+/* ACCIONES */
+.vale-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.btn-aut{padding:7px 13px;background:var(--green-mid);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-aut:hover{background:var(--green)}
+.btn-rech{padding:7px 13px;background:none;border:1.5px solid #fca5a5;color:var(--red);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-rech:hover{background:var(--red-bg)}
+.btn-del-vale{padding:7px 12px;background:none;border:1.5px solid var(--border);border-radius:7px;font-size:11px;font-weight:600;color:#9ca3af;cursor:pointer;transition:all .15s}
+.btn-del-vale:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.btn-wsp{padding:7px 13px;background:#25d366;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.btn-wsp:hover{background:#128c7e}
+/* MODAL COMPARTIR */
+.share-box{background:#f0fdf4;border:1.5px solid #86efac;border-radius:var(--radius);padding:12px 13px;margin-bottom:14px;font-size:12px;white-space:pre-wrap;line-height:1.7;color:#166534;font-family:'Segoe UI',system-ui,sans-serif;word-break:break-word;max-height:320px;overflow-y:auto}
+.btn-copy{width:100%;padding:12px;border-radius:var(--radius);font-size:14px;font-weight:700;cursor:pointer;background:#25d366;color:#fff;border:none;margin-bottom:9px;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-copy:hover{background:#128c7e}
+.btn-copy.copied{background:var(--green)}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:16px;padding:26px 22px;width:100%;max-width:370px;text-align:center}
+.modal-ico{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px}
+.modal-ico.ok{background:var(--blue-light)}
+.modal-ico.ret{background:var(--orange-bg)}
+.modal-ico.aut{background:var(--green-bg)}
+.modal-ico.rech{background:var(--red-bg)}
+.modal-ico.del{background:var(--red-bg)}
+.modal h2{font-size:17px;font-weight:700;color:var(--gray);margin-bottom:6px}
+.modal p{font-size:13px;color:#6b7280;margin-bottom:14px;line-height:1.6}
+.sumbox{background:#f9fafb;border-radius:var(--radius);padding:11px;text-align:left;margin-bottom:16px;font-size:12px;line-height:1.85;color:var(--gray)}
+.sumbox b{font-weight:600}
+.sumbox .mat-list{margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+.sumbox .mat-list-item{display:flex;gap:6px;padding:2px 0;font-size:11px;color:#6b7280}
+.modal-field{text-align:left;margin-bottom:14px}
+.modal-field label{display:block;font-size:12px;font-weight:600;color:var(--gray);margin-bottom:5px}
+.modal-field select,.modal-field input,.modal-field textarea{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--gray);background:#fff;outline:none;font-family:inherit}
+.modal-field select:focus,.modal-field input:focus,.modal-field textarea:focus{border-color:var(--blue-mid)}
+.btn-confirm{width:100%;padding:12px;border-radius:var(--radius);font-size:14px;font-weight:700;cursor:pointer;color:#fff;border:none;margin-bottom:9px;transition:all .15s}
+.btn-confirm.blue{background:var(--blue-mid)}.btn-confirm.blue:hover{background:var(--blue)}
+.btn-confirm.ret{background:var(--orange-mid)}.btn-confirm.ret:hover{background:var(--orange)}
+.btn-confirm.green{background:var(--green-mid)}.btn-confirm.green:hover{background:var(--green)}
+.btn-confirm.red{background:var(--red)}.btn-confirm.red:hover{background:var(--red-dark)}
+.btn-cancel{width:100%;padding:11px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);color:var(--gray);background:#fff}
+.btn-cancel:hover{background:#f3f4f6}
+.err-modal{font-size:11px;color:var(--red);margin-top:-10px;margin-bottom:10px;display:none;text-align:left}
+.err-modal.show{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-row">
+      <div class="hdr-icon">📋</div>
+      <div>
+        <h1>Vales de Requerimiento</h1>
+        <p>Sostenimiento y Mantenimiento de Talud</p>
+      </div>
+      <div class="hdr-badges">
+        <div class="badge pend" id="badgePend" onclick="goTab('lst');setFiltEstado('PENDIENTE')" title="Ver pendientes">⏳ <span id="badgePendN">0</span></div>
+        <div class="badge" id="badgeTotal" onclick="goTab('lst')">0 vales</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active-req" id="t_req" onclick="goTab('req')">📤 Requerimiento</div>
+    <div class="tab" id="t_ret" onclick="goTab('ret')">📥 Retorno</div>
+    <div class="tab" id="t_lst" onclick="goTab('lst')">📋 Vales</div>
+  </div>
+
+  <!-- ═══ PANEL REQUERIMIENTO ═══ -->
+  <div class="panel" id="p_req">
+    <div class="slabel">Número de vale</div>
+    <div class="vale-num-box req">
+      <span class="vale-num-ico">🔏</span>
+      <div>
+        <div class="vale-num-lbl">N° DE VALE — REQUERIMIENTO</div>
+        <div class="vale-num-val" id="reqValeNum">—</div>
+      </div>
+    </div>
+
+    <div class="info-pend">
+      <span class="info-pend-ico">⏳</span>
+      <div class="info-pend-txt">El vale quedará en estado <b>Pendiente</b> hasta que Planeamiento lo autorice en la pestaña <b>Vales</b>.</div>
+    </div>
+
+    <div class="slabel">Fecha y hora</div>
+    <div class="row2" style="margin-bottom:13px">
+      <input type="date" id="reqFecha"/>
+      <input type="time" id="reqHora"/>
+    </div>
+
+    <div class="slabel">Ubicación</div>
+    <div class="field">
+      <label>Área <span class="req">*</span></label>
+      <select id="reqArea" onchange="updateSectors('req')">
+        <option value="">— Seleccionar área —</option>
+        <option>1000</option><option>2000</option><option>3000</option><option>4000</option><option>5800</option>
+      </select>
+      <div class="err" id="reqErrArea">Selecciona el área.</div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Sector</label>
+        <select id="reqSector" disabled onchange="updateFronts('req')"><option value="">— Sector —</option></select>
+      </div>
+      <div class="field">
+        <label>Frente</label>
+        <select id="reqFrente" disabled><option value="">— Frente —</option></select>
+      </div>
+    </div>
+
+    <div class="slabel">Solicitante</div>
+    <div class="field">
+      <label>Solicitado por <span class="req">*</span></label>
+      <select id="reqSolicitado" onchange="toggleOtro('req','Sol')">
+        <option value="">— Seleccionar supervisor —</option>
+        <option>Yeampier Pariente Quenta – Ing. Supervisor</option>
+        <option>Bryan Alexis Ventura Herreros – Ing. Supervisor</option>
+        <option>Angela Arroyo Cuayla Gloria – Ing. Supervisor</option>
+        <option>David Elard Ganampa Medina – Ing. Supervisor</option>
+        <option>Angel Aaron Cespedes Campos – Ing. Supervisor</option>
+        <option>Juan José Ticona Ninaja – Ing. Supervisor</option>
+        <option>Miro Poma – Ing. Supervisor</option>
+        <option>Yasir Guevara – Ing. Supervisor</option>
+        <option value="__otro__">✏ Otro (ingresar manualmente)…</option>
+      </select>
+      <div id="reqOtroSolWrap" style="display:none;margin-top:7px">
+        <input type="text" id="reqOtroSol" placeholder="Nombre del supervisor"/>
+      </div>
+      <div class="err" id="reqErrSol">Indica quién solicita.</div>
+    </div>
+
+    <div class="slabel">Materiales solicitados <span class="req">*</span></div>
+    <div class="err" id="reqErrMats" style="margin-bottom:8px">Agrega al menos un material con cantidad.</div>
+    <div class="lines-wrap">
+      <div class="lines-hdr">
+        <span>Material</span><span style="text-align:center">Unidad</span><span style="text-align:right">Cantidad</span><span></span>
+      </div>
+      <div id="reqLines"></div>
+    </div>
+    <button class="add-line-btn" id="reqAddBtn" onclick="addLine('req')">＋ Agregar otro material</button>
+    <div class="lines-count" id="reqLinesCount"></div>
+
+    <div class="slabel">Actividad</div>
+    <div class="field">
+      <label>¿Para qué actividad van los materiales solicitados? <span class="req">*</span></label>
+      <select id="reqActividad" onchange="toggleOtroAct()">
+        <option value="">— Seleccionar actividad —</option>
+        <option>Instalación de malla (sostenimiento)</option>
+        <option>Perforación e instalación de pernos</option>
+        <option>Instalación de anclajes</option>
+        <option>Inyección / lechada de cemento</option>
+        <option>Instalación de barreras GBE</option>
+        <option>Línea de vida / trabajos en altura</option>
+        <option>Desquinche y limpieza de talud</option>
+        <option>Mantenimiento de malla existente</option>
+        <option>Obras civiles / varios</option>
+        <option value="__otro__">✏ Otra actividad…</option>
+      </select>
+      <div id="reqOtroActWrap" style="display:none;margin-top:7px">
+        <input type="text" id="reqOtroAct" placeholder="Describe la actividad"/>
+      </div>
+      <div class="err" id="reqErrAct">Indica para qué actividad van los materiales.</div>
+    </div>
+
+    <div class="slabel">Observaciones</div>
+    <div class="field">
+      <textarea id="reqObs" placeholder="Indicaciones especiales, urgencia, uso previsto…" rows="2"></textarea>
+    </div>
+
+    <button class="btn btn-req" id="btnSubmitReq" onclick="submit('req')">📤 Registrar Requerimiento</button>
+    <p class="note" id="reqHoraNote">Campos con <span style="color:var(--red)">*</span> son obligatorios</p>
+  </div>
+
+  <!-- ═══ PANEL RETORNO ═══ -->
+  <div class="panel hidden" id="p_ret">
+    <div class="slabel">Número de vale</div>
+    <div class="vale-num-box ret">
+      <span class="vale-num-ico">🔄</span>
+      <div>
+        <div class="vale-num-lbl">N° DE VALE — RETORNO</div>
+        <div class="vale-num-val" id="retValeNum">—</div>
+      </div>
+    </div>
+
+    <div class="info-pend" style="background:#fff7ed;border-color:var(--orange-mid)">
+      <span class="info-pend-ico">⏳</span>
+      <div class="info-pend-txt" style="color:#7c2d12">El retorno quedará en estado <b>Pendiente</b> hasta que Planeamiento lo confirme en la pestaña <b>Vales</b>.</div>
+    </div>
+
+    <div class="slabel">Fecha y hora</div>
+    <div class="row2" style="margin-bottom:13px">
+      <input type="date" id="retFecha"/>
+      <input type="time" id="retHora"/>
+    </div>
+
+    <div class="slabel">Ubicación (origen del retorno)</div>
+    <div class="field">
+      <label>Área <span class="req">*</span></label>
+      <select id="retArea" onchange="updateSectors('ret')">
+        <option value="">— Seleccionar área —</option>
+        <option>1000</option><option>2000</option><option>3000</option><option>4000</option><option>5800</option>
+      </select>
+      <div class="err" id="retErrArea">Selecciona el área.</div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Sector</label>
+        <select id="retSector" disabled onchange="updateFronts('ret')"><option value="">— Sector —</option></select>
+      </div>
+      <div class="field">
+        <label>Frente</label>
+        <select id="retFrente" disabled><option value="">— Frente —</option></select>
+      </div>
+    </div>
+
+    <div class="slabel">Supervisor</div>
+    <div class="field">
+      <label>Devuelto por <span class="req">*</span></label>
+      <select id="retSolicitado" onchange="toggleOtro('ret','Sol')">
+        <option value="">— Seleccionar supervisor —</option>
+        <option>Yeampier Pariente Quenta – Ing. Supervisor</option>
+        <option>Bryan Alexis Ventura Herreros – Ing. Supervisor</option>
+        <option>Angela Arroyo Cuayla Gloria – Ing. Supervisor</option>
+        <option>David Elard Ganampa Medina – Ing. Supervisor</option>
+        <option>Angel Aaron Cespedes Campos – Ing. Supervisor</option>
+        <option>Juan José Ticona Ninaja – Ing. Supervisor</option>
+        <option>Miro Poma – Ing. Supervisor</option>
+        <option>Yasir Guevara – Ing. Supervisor</option>
+        <option value="__otro__">✏ Otro (ingresar manualmente)…</option>
+      </select>
+      <div id="retOtroSolWrap" style="display:none;margin-top:7px">
+        <input type="text" id="retOtroSol" placeholder="Nombre del supervisor"/>
+      </div>
+      <div class="err" id="retErrSol">Indica quién devuelve.</div>
+    </div>
+
+    <div class="slabel">Materiales a retornar <span class="req">*</span></div>
+    <div class="err" id="retErrMats" style="margin-bottom:8px">Agrega al menos un material con cantidad.</div>
+    <div class="lines-wrap">
+      <div class="lines-hdr">
+        <span>Material</span><span style="text-align:center">Unidad</span><span style="text-align:right">Cantidad</span><span></span>
+      </div>
+      <div id="retLines"></div>
+    </div>
+    <button class="add-line-btn" id="retAddBtn" onclick="addLine('ret')">＋ Agregar otro material</button>
+    <div class="lines-count" id="retLinesCount"></div>
+
+    <div class="slabel">Estado del material</div>
+    <div class="field">
+      <label>Estado general</label>
+      <select id="retEstado">
+        <option value="">— Seleccionar —</option>
+        <option>Bueno — reutilizable</option>
+        <option>Regular — con observaciones</option>
+        <option>Dañado — para baja</option>
+        <option>Mezcla de estados</option>
+      </select>
+    </div>
+    <div class="field">
+      <textarea id="retObs" placeholder="Estado del material, razón del retorno, observaciones…" rows="2"></textarea>
+    </div>
+
+    <button class="btn btn-ret" id="btnSubmitRet" onclick="submit('ret')">📥 Registrar Retorno</button>
+    <p class="note" id="retHoraNote">Campos con <span style="color:var(--red)">*</span> son obligatorios</p>
+  </div>
+
+  <!-- ═══ PANEL LISTA ═══ -->
+  <div class="panel hidden" id="p_lst">
+    <div class="list-hdr">
+      <h2>📋 Vales registrados</h2>
+      <button class="btn-exp" onclick="exportExcel()">📊 Excel</button>
+      <button class="btn-exp" onclick="exportCSV()">⬇ CSV</button>
+    </div>
+    <div class="filter-row">
+      <select id="filtTipo" onchange="renderList()">
+        <option value="">Todos los tipos</option>
+        <option value="REQ">Requerimientos</option>
+        <option value="RET">Retornos</option>
+      </select>
+      <select id="filtEstado" onchange="renderList()">
+        <option value="">Todos los estados</option>
+        <option value="PENDIENTE">Pendientes</option>
+        <option value="AUTORIZADO">Autorizados</option>
+        <option value="RECHAZADO">Rechazados</option>
+      </select>
+      <select id="filtArea" onchange="renderList()">
+        <option value="">Todas las áreas</option>
+        <option>1000</option><option>2000</option><option>3000</option><option>4000</option><option>5800</option>
+      </select>
+    </div>
+    <div id="listContainer"><div class="empty">Sin vales registrados aún.</div></div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- MODAL COMPARTIR WHATSAPP -->
+<div class="modal-bg" id="modalWsp">
+  <div class="modal">
+    <div class="modal-ico aut">📤</div>
+    <h2>Compartir por WhatsApp</h2>
+    <p style="margin-bottom:10px">Copia el texto y pégalo en el grupo.</p>
+    <div class="share-box" id="wspText"></div>
+    <button class="btn-copy" id="btnCopy" onclick="copyWsp()">📋 Copiar mensaje</button>
+    <button class="btn-cancel" onclick="closeModal('modalWsp')">Cerrar</button>
+  </div>
+</div>
+<div class="modal-bg" id="modalConfirm">
+  <div class="modal">
+    <div class="modal-ico" id="mIco">📤</div>
+    <h2 id="mTitle">Confirmar registro</h2>
+    <p id="mSub">Verifica los datos antes de guardar.</p>
+    <div class="sumbox" id="mSum"></div>
+    <button class="btn-confirm blue" id="mBtnOk" onclick="confirmSave()">✔ Confirmar y guardar</button>
+    <button class="btn-cancel" onclick="closeModal('modalConfirm')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL ÉXITO -->
+<div class="modal-bg" id="modalOk">
+  <div class="modal">
+    <div class="modal-ico aut">✅</div>
+    <h2 id="mOkTitle">Vale registrado</h2>
+    <p id="mOkSub"></p>
+    <button class="btn-confirm blue" id="mOkBtnNew" onclick="closeModal('modalOk');resetForm(pendingType)">✚ Nuevo vale</button>
+    <button class="btn-cancel" onclick="closeModal('modalOk');goTab('lst')">Ver lista de vales</button>
+  </div>
+</div>
+
+<!-- MODAL AUTORIZAR -->
+<div class="modal-bg" id="modalAut">
+  <div class="modal">
+    <div class="modal-ico aut">✅</div>
+    <h2>Autorizar vale</h2>
+    <p id="mAutSub">Registra quién aprueba este requerimiento.</p>
+    <div class="modal-field">
+      <label>Autorizado por <span style="color:var(--red)">*</span></label>
+      <select id="autSelect" onchange="toggleAutOtro()">
+        <option value="">— Seleccionar —</option>
+        <option>Yasir Guevara - Ing. Residente</option>
+        <option>Alfredo Edmundo Iparraguirre - Ing. Residente</option>
+        <option>Marisela Tala Flores - Ing. Planeamiento</option>
+        <option>Mireya Manrique Valverde - Ing. Planeamiento</option>
+        <option>Gladys Ramos Anccota - Ing. Planeamiento junior</option>
+        <option value="__otro__">✏ Otro…</option>
+      </select>
+    </div>
+    <div class="modal-field" id="autOtroWrap" style="display:none">
+      <label>Nombre del responsable</label>
+      <input type="text" id="autOtroInput" placeholder="Nombre completo"/>
+    </div>
+    <div class="err-modal" id="autErr">Selecciona o ingresa quién autoriza.</div>
+    <button class="btn-confirm green" onclick="confirmAut()">✅ Confirmar autorización</button>
+    <button class="btn-cancel" onclick="closeModal('modalAut')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL RECHAZAR -->
+<div class="modal-bg" id="modalRech">
+  <div class="modal">
+    <div class="modal-ico rech">❌</div>
+    <h2>Rechazar vale</h2>
+    <p id="mRechSub">Indica el motivo del rechazo.</p>
+    <div class="modal-field">
+      <label>Rechazado por <span style="color:var(--red)">*</span></label>
+      <select id="rechSelect" onchange="toggleRechOtro()">
+        <option value="">— Seleccionar —</option>
+        <option>Yasir Guevara - Ing. Residente</option>
+        <option>Alfredo Edmundo Iparraguirre - Ing. Residente</option>
+        <option>Marisela Tala Flores - Ing. Planeamiento</option>
+        <option>Mireya Manrique Valverde - Ing. Planeamiento</option>
+        <option>Gladys Ramos Anccota - Ing. Planeamiento junior</option>
+        <option value="__otro__">✏ Otro…</option>
+      </select>
+    </div>
+    <div class="modal-field" id="rechOtroWrap" style="display:none">
+      <label>Nombre</label>
+      <input type="text" id="rechOtroInput" placeholder="Nombre completo"/>
+    </div>
+    <div class="modal-field">
+      <label>Motivo (opcional)</label>
+      <textarea id="rechMotivo" placeholder="Ej: Stock insuficiente, material no disponible…" rows="2"></textarea>
+    </div>
+    <div class="err-modal" id="rechErr">Selecciona o ingresa quién rechaza.</div>
+    <button class="btn-confirm red" onclick="confirmRech()">❌ Confirmar rechazo</button>
+    <button class="btn-cancel" onclick="closeModal('modalRech')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL ELIMINAR -->
+<div class="modal-bg" id="modalDel">
+  <div class="modal">
+    <div class="modal-ico del">🗑️</div>
+    <h2>Eliminar vale</h2>
+    <p>¿Seguro que deseas eliminar este vale? Esta acción no se puede deshacer.</p>
+    <button class="btn-confirm red" onclick="confirmDel()">Eliminar</button>
+    <button class="btn-cancel" onclick="closeModal('modalDel')">Cancelar</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  CATÁLOGO DE MATERIALES
+// ════════════════════════════════════════════
+const MATERIALES=[
+  {code:'ACE_Co',name:'ACERO CORRUGADO fy=4200 kg/cm2',cat:'ACCESORIOS',unit:'KG'},
+  {code:'COPLE.R32',name:'Acople Autoperforante R32',cat:'ACCESORIOS',unit:'UND'},
+  {code:'COPLE.R38',name:'Acople Autoperforante R38',cat:'ACCESORIOS',unit:'UND'},
+  {code:'ACOPLE.H25',name:'Acople helicoidal 25mm',cat:'ACCESORIOS',unit:'UND'},
+  {code:'ACOPLE.H32',name:'Acople helicoidal 32mm',cat:'ACCESORIOS',unit:'UND'},
+  {code:'ALAMBRE',name:'Alambre Galvanizado',cat:'ACCESORIOS',unit:'KG'},
+  {code:'GA105.2m',name:'Anclaje GA-7001 Tipo I (10.5mm) L= 2m',cat:'ANCLAJES',unit:'UND'},
+  {code:'GA105.3m',name:'Anclaje GA-7001 Tipo I (10.5mm) L= 3m',cat:'ANCLAJES',unit:'UND'},
+  {code:'GA145.2m',name:'Anclaje GA-7001 Tipo II (14.5mm) L=2m',cat:'ANCLAJES',unit:'UND'},
+  {code:'GA145.3m',name:'Anclaje GA-7001 Tipo II (14.5mm) L=3m',cat:'ANCLAJES',unit:'UND'},
+  {code:'GA145.4m',name:'Anclaje GA-7001 Tipo II (14.5mm) L=4m',cat:'ANCLAJES',unit:'UND'},
+  {code:'GA145.5m',name:'Anclaje GA-7001 Tipo II (14.5mm) L=5m',cat:'ANCLAJES',unit:'UND'},
+  {code:'GA185.3m',name:'Anclaje GA-7001 Tipo II (18.5mm) L=3m',cat:'ANCLAJES',unit:'UND'},
+  {code:'PERNO.B25L2',name:'Barra Helicoidal D25mm L=02m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B25',name:'Barra Helicoidal D25mm L=03m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B25',name:'Barra Helicoidal D25mm L=04m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B25',name:'Barra Helicoidal D25mm L=05m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B25',name:'Barra Helicoidal D25mm L=1.5m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B32',name:'Barra Helicoidal D32mm L=01m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B32',name:'Barra Helicoidal D32mm L=02m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B32',name:'Barra Helicoidal D32mm L=03m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B32',name:'Barra Helicoidal D32mm L=04m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B32',name:'Barra Helicoidal D32mm L=05m',cat:'BARRAS',unit:'UND'},
+  {code:'PERNO.B32',name:'Barra Helicoidal D32mm L=06m',cat:'BARRAS',unit:'UND'},
+  {code:'GBE.1000.4M',name:'Barrera GBE-1000 H=4m',cat:'BARRERAS',unit:'UND'},
+  {code:'GBE.500.3M',name:'Barrera GBE-500A H=3m',cat:'BARRERAS',unit:'UND'},
+  {code:'GBE.500.4M',name:'Barrera GBE-500A H=4m',cat:'BARRERAS',unit:'UND'},
+  {code:'BROCA.R32',name:'Broca Autoperforante R32',cat:'ACCESORIOS',unit:'UND'},
+  {code:'BROCA.R38',name:'Broca Autoperforante R38',cat:'ACCESORIOS',unit:'UND'},
+  {code:'CABLE.LV',name:'CABLE ACERO BOA D=12mm PARA LINEA DE VIDA',cat:'CABLES',unit:'ML'},
+  {code:'CABLE.6',name:'Cable de Acero BOA D=06mm 1/4',cat:'CABLES',unit:'ML'},
+  {code:'CABLE.12',name:'Cable de Acero BOA D=12mm 1/2',cat:'CABLES',unit:'ML'},
+  {code:'CABLE.16',name:'Cable de Acero BOA D=16mm 5/8',cat:'CABLES',unit:'ML'},
+  {code:'CABLE.19',name:'Cable de Acero BOA D=19mm 3/4',cat:'CABLES',unit:'ML'},
+  {code:'CABLE.22',name:'Cable de Acero BOA D=22mm 7/8',cat:'CABLES',unit:'ML'},
+  {code:'AGUA_C',name:'CAJA DE AGUA PARA CONSUMO',cat:'CEMENTO',unit:'CAJA'},
+  {code:'CANCAMO',name:'Cancamos de 1" L=1.50m',cat:'ACCESORIOS',unit:'UND'},
+  {code:'CEM.CON',name:'Cemento Conductivo',cat:'CEMENTO',unit:'BLS'},
+  {code:'CEM.EX',name:'Cemento Expansivo',cat:'CEMENTO',unit:'BLS'},
+  {code:'CEM',name:'Cemento Yura Max Azul',cat:'CEMENTO',unit:'BLS'},
+  {code:'CEM',name:'Cemento Yura Pro Rojo',cat:'CEMENTO',unit:'BLS'},
+  {code:'CENTRA',name:'Centralizador Estrella R32',cat:'ACCESORIOS',unit:'UND'},
+  {code:'CENTRA',name:'Centralizador Estrella R38',cat:'ACCESORIOS',unit:'UND'},
+  {code:'CENTRA',name:'Centralizador PVC D=25mm',cat:'ACCESORIOS',unit:'UND'},
+  {code:'CENTRA',name:'Centralizador PVC D=32mm',cat:'ACCESORIOS',unit:'UND'},
+  {code:'C.T2',name:'Clips de Conexión T2',cat:'ACCESORIOS',unit:'UND'},
+  {code:'C.T3',name:'Clips de Conexión T3',cat:'ACCESORIOS',unit:'UND'},
+  {code:'CONCRELISTO',name:'Concrelisto',cat:'CEMENTO',unit:'BLS'},
+  {code:'GARRO',name:'Garrota D=12mm 1/2',cat:'ACCESORIOS',unit:'UND'},
+  {code:'GARRO',name:'Garrota D=16mm 5/8',cat:'ACCESORIOS',unit:'UND'},
+  {code:'GARRO',name:'Garrota D=19mm 3/4',cat:'ACCESORIOS',unit:'UND'},
+  {code:'GEO_4x130',name:'Geomalla Biaxial 4x130m',cat:'MALLA',unit:'M2'},
+  {code:'GEO_4x100',name:'Geotextil 4x100m',cat:'MALLA',unit:'M2'},
+  {code:'GRI.1',name:'Grillete 1"',cat:'ACCESORIOS',unit:'UND'},
+  {code:'GRI.12',name:'Grillete 1/2"',cat:'ACCESORIOS',unit:'UND'},
+  {code:'GRI.34',name:'Grillete 3/4"',cat:'ACCESORIOS',unit:'UND'},
+  {code:'GRI.58',name:'Grillete 5/8"',cat:'ACCESORIOS',unit:'UND'},
+  {code:'GRI.78',name:'Grillete 7/8"',cat:'ACCESORIOS',unit:'UND'},
+  {code:'InPE_985',name:'Intraplast PE-9 X 0.85 KG',cat:'CEMENTO',unit:'KG'},
+  {code:'D80.3',name:'Malla deltax G80/3 3.9x30m',cat:'MALLA',unit:'M2'},
+  {code:'D80.2',name:'Malla deltax G80/2 3.9x30m',cat:'MALLA',unit:'M2'},
+  {code:'M80.3',name:'Malla Minax 80/3 D=2.3x20m',cat:'MALLA',unit:'M2'},
+  {code:'M80.3',name:'Malla Minax 80/3 D=2.5x20m',cat:'MALLA',unit:'M2'},
+  {code:'M80.3',name:'Malla Minax 80/3 D=2.5x25m',cat:'MALLA',unit:'M2'},
+  {code:'M80.3',name:'Malla Minax 80/3 D=3.5x30m',cat:'MALLA',unit:'M2'},
+  {code:'M80.3',name:'Malla Minax 80/3 D=3.9x30m',cat:'MALLA',unit:'M2'},
+  {code:'M80.4',name:'Malla Minax 80/4 2.3X15m',cat:'MALLA',unit:'M2'},
+  {code:'M80.4',name:'Malla Minax 80/4 2.5X15m',cat:'MALLA',unit:'M2'},
+  {code:'M80.4',name:'Malla Minax 80/4 2.5X22.5m',cat:'MALLA',unit:'M2'},
+  {code:'M80.4',name:'Malla Minax 80/4 D=2.3x30m',cat:'MALLA',unit:'M2'},
+  {code:'M80.4',name:'Malla Minax 80/4 D=2.5x12.5m',cat:'MALLA',unit:'M2'},
+  {code:'M80.4',name:'Malla Minax 80/4 D=2.5x20m',cat:'MALLA',unit:'M2'},
+  {code:'M80.4',name:'Malla Minax 80/4 D=3.3x15.15m',cat:'MALLA',unit:'M2'},
+  {code:'MALLA_Ol',name:'Malla Olimpica',cat:'MALLA',unit:'M2'},
+  {code:'RATCHER',name:'MALLA RATCHER 4.2 x 100MT',cat:'MALLA',unit:'M2'},
+  {code:'T65.3',name:'Malla Tecco G65/3 3.9x30m',cat:'MALLA',unit:'M2'},
+  {code:'T65.4',name:'Malla Tecco G65/4 2.50x20m',cat:'MALLA',unit:'M2'},
+  {code:'T65.3.5',name:'MALLA TECCO 65/3 - 150 KN/M - 3.5 X 30 M',cat:'MALLA',unit:'M2'},
+  {code:'T80.3',name:'Malla Tecco G80/3 3.9x30m',cat:'MALLA',unit:'M2'},
+  {code:'Ma_TT',name:'Malla Triple Torsion',cat:'MALLA',unit:'M2'},
+  {code:'PERNO.Auto_R32',name:'Perno autoperforante R32-500',cat:'PERNOS',unit:'UND'},
+  {code:'PERNO.Auto_R38',name:'Perno autoperforante R38-500',cat:'PERNOS',unit:'UND'},
+  {code:'PERNO.Auto_R38',name:'Perno DYWI Drill R38 - 420 L=03m',cat:'PERNOS',unit:'UND'},
+  {code:'PERNO.Auto_R32',name:'Perno DYWI DrillR32 - 320 L=1.5m',cat:'PERNOS',unit:'UND'},
+  {code:'PERNO.Auto_R38',name:'Perno DYWI DrillR38 - 420 L=1.5m',cat:'PERNOS',unit:'UND'},
+  {code:'PLACA.B25',name:'Placa Bahe Con Pestaña D=33mm 200x200x4.5',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.B25',name:'Placa Bahe Con Pestaña D=25mm 200x200x4.5',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.B25',name:'Placa Bahe D=25mm 200x200x4.5mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.B25',name:'Placa Bahe D=25mm 200x200x4mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.B32',name:'Placa Bahe D=32mm 200x200x4.5mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.B32',name:'Placa Bahe D=32mm 200x200x8mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.B32',name:'Placa Bahe D=32mm 200x200x12mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.B38',name:'Placa Bahe D=38mm 200x200x8mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.B25',name:'Placa Bahe Plana D=25mm 200x200x8mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.SP.33',name:'Placa Spike P33',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.TR25',name:'Placa Tipo Rana 25mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.TR30',name:'Placa Tipo Rana 30mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.TR32',name:'Placa Tipo Rana 32mm',cat:'PLACAS',unit:'UND'},
+  {code:'PLACA.TR38',name:'Placa Tipo Rana 38mm',cat:'PLACAS',unit:'UND'},
+  {code:'Sikament',name:'SIKAMENT 306 X 200LT',cat:'CEMENTO',unit:'GLN'},
+  {code:'SOGA',name:'SOGA',cat:'ACCESORIOS',unit:'ML'},
+  {code:'SUJE.12',name:'Sujetacable 12mm 1/2',cat:'ACCESORIOS',unit:'UND'},
+  {code:'SUJE.16',name:'Sujetacable 16mm 5/8',cat:'ACCESORIOS',unit:'UND'},
+  {code:'SUJE.19',name:'Sujetacable 19mm 3/4',cat:'ACCESORIOS',unit:'UND'},
+  {code:'SUJE.22',name:'Sujetacable 22mm 7/8',cat:'ACCESORIOS',unit:'UND'},
+  {code:'SUJE.6',name:'Sujetacable 6mm 1/4',cat:'ACCESORIOS',unit:'UND'},
+  {code:'TUERCA.B25',name:'Tuerca Bahe D=25mm',cat:'ACCESORIOS',unit:'UND'},
+  {code:'TUERCA.B32',name:'Tuerca Bahe D=32mm',cat:'ACCESORIOS',unit:'UND'},
+  {code:'TUERCA.R32',name:'Tuerca R32',cat:'ACCESORIOS',unit:'UND'},
+  {code:'TUERCA.R38',name:'Tuerca R38',cat:'ACCESORIOS',unit:'UND'},
+];
+
+const UBICACIONES={
+  '1000':{'—':['—']},
+  '2000':{'By Pass Sur':['By Pass Sur 01'],'By Pass':['BPN - 32'],'Tajo':['Tajo 04 Norte'],'Zona 03':['Tajo 03 Norte'],'OPB':['OPB-Barreras']},
+  '3000':{'Faja Overland':['FAJA OVERLAND ZONA A - A1','FAJA OVERLAND ZONA C','FAJA OVERLAND ZONA D'],'Poza PC':['Poza PC 002','POZA PC-003','ACCESO POZA PC-003'],'VIA MAR II':['ZCM08','ZCM09','ZCM06','ZCM05','ZCM03','ZCM02','ZCM01','VM_10 Sost Pasivo'],'Mantenimiento MAR II':['VM_M-10','VM_M-5','VM_M-4','VM_M-1','VM_M-16','VM_M-8','VM_M-6','VM_M-9','VM_M-13','VM_M-12','VM_M-7','VM_M-3']},
+  '4000':{'Sala Electrica':['PLATAFORMA SALA ELECTRICA','PLATAFORMA DE OPERACIONES']},
+  '5800':{'Mantenimiento MAR II':['VM_M-2']},
+};
+
+// ════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ════════════════════════════════════════════
+const STORE_KEY='vales_talud_v2';
+const MAX_LINES=20;
+let pendingType=null, pendingData=null, actionId=null, delId=null;
+const lines={req:[],ret:[]};
+
+function loadVales(){try{return JSON.parse(localStorage.getItem(STORE_KEY)||'[]');}catch{return [];}}
+function saveVales(a){localStorage.setItem(STORE_KEY,JSON.stringify(a));}
+
+// ════════════════════════════════════════════
+//  NUMERACIÓN
+// ════════════════════════════════════════════
+function nextValeNum(pnl){
+  const prefix=pnl==='req'?'VRD':'VDD';
+  const all=loadVales();
+  let max=0;
+  all.filter(v=>v.valeNum&&v.valeNum.startsWith(prefix+'‑')||v.valeNum&&v.valeNum.startsWith(prefix+'-')).forEach(v=>{
+    const n=parseInt(v.valeNum.slice(prefix.length+1))||0;
+    if(n>max) max=n;
+  });
+  return `${prefix}-${String(max+1).padStart(4,'0')}`;
+}
+
+// ════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════
+function goTab(t){
+  ['req','ret','lst'].forEach(x=>{
+    document.getElementById('p_'+x).classList.toggle('hidden',x!==t);
+    document.getElementById('t_'+x).className='tab'+(x===t?' active-'+t:'');
+  });
+  if(t==='lst') renderList();
+}
+
+function setFiltEstado(v){
+  document.getElementById('filtEstado').value=v;
+  renderList();
+}
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+function init(){
+  const now=new Date();
+  const d=now.toISOString().slice(0,10), t=now.toTimeString().slice(0,5);
+  ['req','ret'].forEach(p=>{
+    document.getElementById(p+'Fecha').value=d;
+    document.getElementById(p+'Hora').value=t;
+    document.getElementById(p+'ValeNum').textContent=nextValeNum(p);
+    addLine(p);
+  });
+  updateBadge();
+  actualizarEstadoHorario();
+}
+
+// ════════════════════════════════════════════
+//  LÍNEAS DE MATERIALES
+// ════════════════════════════════════════════
+function addLine(pnl){
+  if(lines[pnl].length>=MAX_LINES){alert('Máximo '+MAX_LINES+' materiales por vale.');return;}
+  const id=Date.now()+'_'+Math.random().toString(36).slice(2,5);
+  lines[pnl].push({id,mat:null,qty:null});
+  renderLines(pnl);
+  updateAddBtn(pnl);
+  setTimeout(()=>{const el=document.getElementById('ls_'+pnl+'_'+id);if(el)el.focus();},80);
+}
+function removeLine(pnl,id){
+  lines[pnl]=lines[pnl].filter(l=>l.id!==id);
+  if(!lines[pnl].length) addLine(pnl);
+  else{renderLines(pnl);updateAddBtn(pnl);}
+}
+function renderLines(pnl){
+  const c=document.getElementById(pnl+'Lines');c.innerHTML='';
+  lines[pnl].forEach((ln,i)=>{
+    const row=document.createElement('div');
+    row.className='line-row'+(ln.mat?' filled':'');
+    row.id='lrow_'+pnl+'_'+ln.id;
+    // mat cell
+    const mc=document.createElement('div');mc.className='line-mat-wrap';
+    const si=document.createElement('input');si.type='text';si.className='line-mat-search'+(ln.mat?' selected':'');
+    si.id='ls_'+pnl+'_'+ln.id;si.placeholder=`#${i+1} Material…`;si.autocomplete='off';
+    si.value=ln.mat?`[${ln.mat.code}] ${ln.mat.name}`:'';
+    si.addEventListener('input',()=>openDrop(pnl,ln.id,si.value));
+    si.addEventListener('focus',()=>{if(!ln.mat)openDrop(pnl,ln.id,'');});
+    si.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrop(pnl,ln.id);});
+    const dp=document.createElement('div');dp.className='line-drop';dp.id='ld_'+pnl+'_'+ln.id;
+    mc.appendChild(si);mc.appendChild(dp);
+    // unit
+    const uc=document.createElement('div');uc.className='line-unit';uc.id='lu_'+pnl+'_'+ln.id;uc.textContent=ln.mat?ln.mat.unit:'—';
+    // qty
+    const qi=document.createElement('input');qi.type='number';qi.min='0.01';qi.step='0.01';
+    qi.className='line-qty';qi.id='lq_'+pnl+'_'+ln.id;qi.disabled=!ln.mat;qi.placeholder='0';qi.value=ln.qty||'';
+    qi.addEventListener('input',()=>{ln.qty=parseFloat(qi.value)||null;updateLinesCount(pnl);});
+    // del
+    const db=document.createElement('button');db.className='line-del';db.innerHTML='✕';db.title='Quitar';
+    db.onclick=()=>removeLine(pnl,ln.id);
+    row.append(mc,uc,qi,db);c.appendChild(row);
+  });
+  updateLinesCount(pnl);
+}
+function openDrop(pnl,id,q){
+  const dp=document.getElementById('ld_'+pnl+'_'+id);
+  const ql=q.toLowerCase().trim();
+  const res=ql?MATERIALES.filter(m=>m.code.toLowerCase().includes(ql)||m.name.toLowerCase().includes(ql)||m.cat.toLowerCase().includes(ql)):MATERIALES.slice(0,30);
+  dp.innerHTML='';
+  if(!res.length){dp.innerHTML='<div class="line-drop-item" style="color:#9ca3af;font-size:12px">Sin resultados</div>';}
+  else res.slice(0,25).forEach(m=>{
+    const it=document.createElement('div');it.className='line-drop-item';
+    it.innerHTML=`<div class="ldi-code">${m.code}</div><div class="ldi-name">${m.name}</div><div class="ldi-cat">${m.cat} · ${m.unit}</div>`;
+    it.onmousedown=e=>{e.preventDefault();selectMat(pnl,id,m);};
+    dp.appendChild(it);
+  });
+  dp.classList.add('open');
+  document.querySelectorAll('.line-drop.open').forEach(d=>{if(d.id!=='ld_'+pnl+'_'+id)d.classList.remove('open');});
+}
+function closeDrop(pnl,id){const d=document.getElementById('ld_'+pnl+'_'+id);if(d)d.classList.remove('open');}
+function selectMat(pnl,id,mat){
+  const ln=lines[pnl].find(l=>l.id===id);if(!ln)return;
+  ln.mat=mat;ln.qty=null;
+  const si=document.getElementById('ls_'+pnl+'_'+id);
+  if(si){si.value=`[${mat.code}] ${mat.name}`;si.classList.add('selected');}
+  const uc=document.getElementById('lu_'+pnl+'_'+id);if(uc)uc.textContent=mat.unit;
+  const qi=document.getElementById('lq_'+pnl+'_'+id);if(qi){qi.disabled=false;qi.focus();}
+  closeDrop(pnl,id);
+  const row=document.getElementById('lrow_'+pnl+'_'+id);if(row)row.classList.add('filled');
+  updateLinesCount(pnl);
+}
+function updateLinesCount(pnl){
+  const filled=lines[pnl].filter(l=>l.mat&&l.qty).length,total=lines[pnl].length;
+  const el=document.getElementById(pnl+'LinesCount');
+  if(el)el.textContent=filled?`${filled} de ${total} línea${total!==1?'s':''} completada${filled!==1?'s':''}`:total>1?`${total} líneas — ingresa material y cantidad`:'';
+}
+function updateAddBtn(pnl){
+  const btn=document.getElementById(pnl+'AddBtn'),rem=MAX_LINES-lines[pnl].length;
+  if(btn){btn.style.display=rem>0?'flex':'none';btn.textContent=rem>0?`＋ Agregar otro material (quedan ${rem})`:'Límite alcanzado';}
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.line-mat-wrap'))document.querySelectorAll('.line-drop.open').forEach(d=>d.classList.remove('open'));});
+
+// ════════════════════════════════════════════
+//  ÁREA / SECTOR / FRENTE
+// ════════════════════════════════════════════
+function updateSectors(pnl){
+  const a=document.getElementById(pnl+'Area').value;
+  const ss=document.getElementById(pnl+'Sector'),fs=document.getElementById(pnl+'Frente');
+  ss.innerHTML='<option value="">— Sector —</option>';fs.innerHTML='<option value="">— Frente —</option>';
+  ss.disabled=!a;fs.disabled=true;
+  Object.keys(UBICACIONES[a]||{}).forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;ss.appendChild(o);});
+  document.getElementById(pnl+'ErrArea').classList.remove('show');
+}
+function updateFronts(pnl){
+  const a=document.getElementById(pnl+'Area').value,s=document.getElementById(pnl+'Sector').value;
+  const fs=document.getElementById(pnl+'Frente');
+  fs.innerHTML='<option value="">— Frente —</option>';fs.disabled=!s;
+  (UBICACIONES[a]?.[s]||[]).forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;fs.appendChild(o);});
+}
+
+// ════════════════════════════════════════════
+//  OTROS (manual)
+// ════════════════════════════════════════════
+function toggleOtro(pnl,campo){
+  const sel=document.getElementById(pnl+'Otro'+campo.slice(0,1).toUpperCase()+campo.slice(1)+'Wrap')||document.getElementById(pnl+'Otro'+campo+'Wrap');
+  // generic approach:
+  const selEl=document.getElementById(pnl+campo+'icitado')||document.getElementById(pnl+campo);
+  // Just use direct ids:
+}
+// Simpler direct functions:
+function toggleOtroSol(pnl){
+  const v=document.getElementById(pnl+'Solicitado').value;
+  document.getElementById(pnl+'OtroSolWrap').style.display=v==='__otro__'?'block':'none';
+}
+function getSol(pnl){
+  const v=document.getElementById(pnl+'Solicitado').value;
+  return v==='__otro__'?document.getElementById(pnl+'OtroSol').value.trim():v;
+}
+function toggleOtroAct(){
+  const v=document.getElementById('reqActividad').value;
+  document.getElementById('reqOtroActWrap').style.display=v==='__otro__'?'block':'none';
+  document.getElementById('reqErrAct').classList.remove('show');
+}
+function getActividad(){
+  const v=document.getElementById('reqActividad').value;
+  return v==='__otro__'?document.getElementById('reqOtroAct').value.trim():v;
+}
+
+// ════════════════════════════════════════════
+//  SUBMIT
+// ════════════════════════════════════════════
+// ════════════════════════════════════════════
+//  HORARIO LÍMITE PARA GENERAR VALES (hasta 2:00 PM)
+// ════════════════════════════════════════════
+const HORA_LIMITE=14; // 2:00 PM
+function dentroDeHorario(){return new Date().getHours()<HORA_LIMITE;}
+function actualizarEstadoHorario(){
+  const bloqueado=!dentroDeHorario();
+  const btnReq=document.getElementById('btnSubmitReq');
+  const btnRet=document.getElementById('btnSubmitRet');
+  const noteReq=document.getElementById('reqHoraNote');
+  const noteRet=document.getElementById('retHoraNote');
+  const msg='⛔ Fuera de horario: solo se pueden generar vales hasta las 2:00 PM.';
+  if(btnReq){btnReq.disabled=bloqueado;btnReq.style.opacity=bloqueado?'0.5':'';btnReq.style.cursor=bloqueado?'not-allowed':'';}
+  if(btnRet){btnRet.disabled=bloqueado;btnRet.style.opacity=bloqueado?'0.5':'';btnRet.style.cursor=bloqueado?'not-allowed':'';}
+  if(noteReq) noteReq.innerHTML=bloqueado?`<b style="color:var(--red)">${msg}</b>`:'Campos con <span style="color:var(--red)">*</span> son obligatorios';
+  if(noteRet) noteRet.innerHTML=bloqueado?`<b style="color:var(--red)">${msg}</b>`:'Campos con <span style="color:var(--red)">*</span> son obligatorios';
+}
+setInterval(actualizarEstadoHorario,60000);
+
+function submit(pnl){
+  if(!dentroDeHorario()){alert('⛔ Solo se pueden generar vales hasta las 2:00 PM. Por favor intenta antes de esa hora.');actualizarEstadoHorario();return;}
+  let ok=true;
+  const area=document.getElementById(pnl+'Area').value;
+  document.getElementById(pnl+'ErrArea').classList.toggle('show',!area);if(!area)ok=false;
+  const sol=getSol(pnl);
+  document.getElementById(pnl+'ErrSol').classList.toggle('show',!sol);if(!sol)ok=false;
+  let actividad='';
+  if(pnl==='req'){
+    actividad=getActividad();
+    document.getElementById('reqErrAct').classList.toggle('show',!actividad);if(!actividad)ok=false;
+  }
+  const valid=lines[pnl].filter(l=>l.mat&&l.qty&&l.qty>0);
+  document.getElementById(pnl+'ErrMats').classList.toggle('show',!valid.length);if(!valid.length)ok=false;
+  if(!ok){document.querySelector('#p_'+pnl+' .err.show')?.scrollIntoView({behavior:'smooth',block:'center'});return;}
+
+  const sector=document.getElementById(pnl+'Sector').value;
+  const frente=document.getElementById(pnl+'Frente').value;
+  const obs=document.getElementById(pnl+'Obs').value.trim();
+  const estado=pnl==='ret'?document.getElementById('retEstado').value:'';
+
+  pendingData={
+    id:Date.now()+'_'+Math.random().toString(36).slice(2,8),
+    tipo:pnl==='req'?'REQ':'RET',
+    valeNum:document.getElementById(pnl+'ValeNum').textContent,
+    fecha:document.getElementById(pnl+'Fecha').value,
+    hora:document.getElementById(pnl+'Hora').value,
+    area,sector,frente,solicitado:sol,
+    actividad,
+    materiales:valid.map(l=>({code:l.mat.code,name:l.mat.name,unit:l.mat.unit,qty:l.qty})),
+    obs,estadoMaterial:estado,
+    estadoVale:'PENDIENTE',
+    autorizado:null,autorizadoFecha:null,rechazadoMotivo:null,
+    createdAt:new Date().toISOString()
+  };
+  pendingType=pnl;
+  showConfirmModal(pendingData);
+}
+
+function showConfirmModal(d){
+  const isRet=d.tipo==='RET';
+  document.getElementById('mIco').textContent=isRet?'📥':'📤';
+  document.getElementById('mIco').className='modal-ico '+(isRet?'ret':'ok');
+  document.getElementById('mTitle').textContent=isRet?'Confirmar retorno':'Confirmar requerimiento';
+  document.getElementById('mBtnOk').className='btn-confirm '+(isRet?'ret':'blue');
+  let mats='';
+  d.materiales.forEach((m,i)=>{mats+=`<div class="mat-list-item"><span style="color:#9ca3af;width:18px">${i+1}.</span><b>[${m.code}]</b>&nbsp;${m.name}&nbsp;— <b>${m.qty} ${m.unit}</b></div>`;});
+  document.getElementById('mSum').innerHTML=`
+    <b>Vale:</b> ${d.valeNum} &nbsp;<span class="est-pill PENDIENTE">⏳ PENDIENTE</span><br>
+    <b>${isRet?'Devuelto por':'Solicitado por'}:</b> ${d.solicitado}<br>
+    <b>Área:</b> ${d.area}${d.sector?' · '+d.sector:''}${d.frente?' › '+d.frente:''}<br>
+    ${d.actividad?`<b>Actividad:</b> ${d.actividad}<br>`:''}
+    <b>Fecha:</b> ${d.fecha} ${d.hora}<br>
+    ${d.obs?`<b>Obs:</b> ${d.obs}<br>`:''}
+    <div class="mat-list"><b>${d.materiales.length} material${d.materiales.length!==1?'es':''}:</b>${mats}</div>
+  `;
+  document.getElementById('modalConfirm').classList.add('show');
+}
+
+function confirmSave(){
+  if(!pendingData)return;
+  const all=loadVales();all.unshift(pendingData);saveVales(all);
+  closeModal('modalConfirm');
+  document.getElementById('mOkTitle').textContent=pendingData.tipo==='RET'?'Retorno registrado':'Requerimiento registrado';
+  document.getElementById('mOkSub').textContent=`${pendingData.valeNum} guardado como Pendiente. Planeamiento deberá autorizarlo en la pestaña Vales.`;
+  document.getElementById('mOkBtnNew').className='btn-confirm '+(pendingData.tipo==='RET'?'ret':'blue');
+  document.getElementById('modalOk').classList.add('show');
+  updateBadge();
+}
+
+// ════════════════════════════════════════════
+//  RESET
+// ════════════════════════════════════════════
+function resetForm(pnl){
+  const now=new Date();
+  document.getElementById(pnl+'Fecha').value=now.toISOString().slice(0,10);
+  document.getElementById(pnl+'Hora').value=now.toTimeString().slice(0,5);
+  document.getElementById(pnl+'Area').value='';
+  ['Sector','Frente'].forEach(f=>{const el=document.getElementById(pnl+f);el.innerHTML=`<option value="">— ${f} —</option>`;el.disabled=true;});
+  document.getElementById(pnl+'Solicitado').value='';
+  document.getElementById(pnl+'OtroSolWrap').style.display='none';
+  document.getElementById(pnl+'Obs').value='';
+  if(pnl==='ret')document.getElementById('retEstado').value='';
+  if(pnl==='req'){
+    document.getElementById('reqActividad').value='';
+    document.getElementById('reqOtroAct').value='';
+    document.getElementById('reqOtroActWrap').style.display='none';
+    document.getElementById('reqErrAct').classList.remove('show');
+  }
+  ['ErrArea','ErrSol','ErrMats'].forEach(e=>document.getElementById(pnl+e).classList.remove('show'));
+  lines[pnl]=[];addLine(pnl);
+  document.getElementById(pnl+'ValeNum').textContent=nextValeNum(pnl);
+  goTab(pnl);
+}
+
+// ════════════════════════════════════════════
+//  LISTA
+// ════════════════════════════════════════════
+function renderList(){
+  const all=loadVales();
+  const tipo=document.getElementById('filtTipo').value;
+  const est=document.getElementById('filtEstado').value;
+  const area=document.getElementById('filtArea').value;
+  const fil=all.filter(v=>{
+    if(tipo&&v.tipo!==tipo)return false;
+    if(est&&v.estadoVale!==est)return false;
+    if(area&&v.area!==area)return false;
+    return true;
+  });
+  const c=document.getElementById('listContainer');
+  if(!fil.length){c.innerHTML='<div class="empty">Sin vales para los filtros seleccionados.</div>';return;}
+  c.innerHTML='';
+  fil.forEach(v=>{
+    const card=document.createElement('div');
+    card.className=`vale-card ${v.tipo} estado-${v.estadoVale}`;
+    const isRet=v.tipo==='RET';
+    const isPend=v.estadoVale==='PENDIENTE';
+    const isAut=v.estadoVale==='AUTORIZADO';
+    const isRech=v.estadoVale==='RECHAZADO';
+
+    // Bloque autorización
+    let autBlock='';
+    if(isAut)autBlock=`<div class="aut-box"><div class="aut-who">✅ <b>Autorizado por:</b> ${v.autorizado}</div><div class="aut-fecha">${v.autorizadoFecha||''}</div></div>`;
+    if(isRech)autBlock=`<div class="aut-box"><div class="aut-who">❌ <b>Rechazado por:</b> ${v.autorizado||'—'}</div><div class="aut-fecha">${v.autorizadoFecha||''}</div>${v.rechazadoMotivo?`<div class="aut-rechazado-motivo">Motivo: ${v.rechazadoMotivo}</div>`:''}</div>`;
+
+    // Botones acción
+    let acciones='';
+    if(isPend) acciones=`<button class="btn-aut" onclick="askAut('${v.id}')">✅ Autorizar</button><button class="btn-rech" onclick="askRech('${v.id}')">❌ Rechazar</button>`;
+    acciones+=`<button class="btn-wsp" onclick="shareWsp('${v.id}')">📤 WhatsApp</button>`;
+    acciones+=`<button class="btn-del-vale" onclick="askDel('${v.id}')">🗑</button>`;
+
+    card.innerHTML=`
+      <div class="vale-card-hdr" onclick="toggleCard(this)">
+        <span class="tipo-pill ${v.tipo}">${isRet?'RETORNO':'REQUER.'}</span>
+        <span class="vale-code">${v.valeNum}</span>
+        <span class="est-pill ${v.estadoVale}" style="font-size:9px">${v.estadoVale==='PENDIENTE'?'⏳':v.estadoVale==='AUTORIZADO'?'✅':'❌'} ${v.estadoVale}</span>
+        <span class="vale-date">${v.fecha}</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="vale-card-body">
+        <div class="vale-meta">
+          <b>${isRet?'Devuelto por':'Solicitado por'}:</b> ${v.solicitado}<br>
+          <b>Área:</b> ${v.area}${v.sector?' · '+v.sector:''}${v.frente?' › '+v.frente:''}<br>
+          ${v.actividad?`<b>Actividad:</b> ${v.actividad}<br>`:''}
+          <b>Hora:</b> ${v.hora}
+          ${v.estadoMaterial?`<br><b>Estado material:</b> ${v.estadoMaterial}`:''}
+          ${v.obs?`<br><b>Obs:</b> ${v.obs}`:''}
+        </div>
+        <div class="vale-mats-title">${v.materiales.length} MATERIAL${v.materiales.length!==1?'ES':''}</div>
+        ${v.materiales.map((m,i)=>`
+          <div class="vale-mat-row">
+            <span class="vmat-num">${i+1}</span>
+            <span class="vmat-code">${m.code}</span>
+            <span class="vmat-name">${m.name}</span>
+            <span class="vmat-qty">${m.qty}</span>
+            <span class="vmat-unit">${m.unit}</span>
+          </div>`).join('')}
+        ${autBlock}
+        <div class="vale-actions">${acciones}</div>
+      </div>
+    `;
+    c.appendChild(card);
+  });
+}
+
+function toggleCard(hdr){
+  const body=hdr.nextElementSibling;
+  const chev=hdr.querySelector('.chevron');
+  const open=body.classList.toggle('open');
+  chev.classList.toggle('open',open);
+}
+
+// ════════════════════════════════════════════
+//  AUTORIZAR
+// ════════════════════════════════════════════
+function toggleAutOtro(){
+  document.getElementById('autOtroWrap').style.display=document.getElementById('autSelect').value==='__otro__'?'block':'none';
+}
+function askAut(id){
+  actionId=id;
+  const v=loadVales().find(x=>x.id===id);
+  document.getElementById('mAutSub').textContent=`Vale ${v.valeNum} — ${v.solicitado}`;
+  document.getElementById('autSelect').value='';
+  document.getElementById('autOtroWrap').style.display='none';
+  document.getElementById('autOtroInput').value='';
+  document.getElementById('autErr').classList.remove('show');
+  document.getElementById('modalAut').classList.add('show');
+}
+function confirmAut(){
+  const sel=document.getElementById('autSelect').value;
+  const quien=sel==='__otro__'?document.getElementById('autOtroInput').value.trim():sel;
+  if(!quien){document.getElementById('autErr').classList.add('show');return;}
+  const all=loadVales();
+  const v=all.find(x=>x.id===actionId);
+  if(v){v.estadoVale='AUTORIZADO';v.autorizado=quien;v.autorizadoFecha=new Date().toLocaleString('es-PE');}
+  saveVales(all);closeModal('modalAut');renderList();updateBadge();
+}
+
+// ════════════════════════════════════════════
+//  RECHAZAR
+// ════════════════════════════════════════════
+function toggleRechOtro(){
+  document.getElementById('rechOtroWrap').style.display=document.getElementById('rechSelect').value==='__otro__'?'block':'none';
+}
+function askRech(id){
+  actionId=id;
+  const v=loadVales().find(x=>x.id===id);
+  document.getElementById('mRechSub').textContent=`Vale ${v.valeNum} — ${v.solicitado}`;
+  document.getElementById('rechSelect').value='';
+  document.getElementById('rechOtroWrap').style.display='none';
+  document.getElementById('rechOtroInput').value='';
+  document.getElementById('rechMotivo').value='';
+  document.getElementById('rechErr').classList.remove('show');
+  document.getElementById('modalRech').classList.add('show');
+}
+function confirmRech(){
+  const sel=document.getElementById('rechSelect').value;
+  const quien=sel==='__otro__'?document.getElementById('rechOtroInput').value.trim():sel;
+  if(!quien){document.getElementById('rechErr').classList.add('show');return;}
+  const motivo=document.getElementById('rechMotivo').value.trim();
+  const all=loadVales();
+  const v=all.find(x=>x.id===actionId);
+  if(v){v.estadoVale='RECHAZADO';v.autorizado=quien;v.rechazadoMotivo=motivo;v.autorizadoFecha=new Date().toLocaleString('es-PE');}
+  saveVales(all);closeModal('modalRech');renderList();updateBadge();
+}
+
+// ════════════════════════════════════════════
+//  ELIMINAR
+// ════════════════════════════════════════════
+function askDel(id){delId=id;document.getElementById('modalDel').classList.add('show');}
+function confirmDel(){
+  if(!delId)return;
+  saveVales(loadVales().filter(v=>v.id!==delId));
+  delId=null;closeModal('modalDel');renderList();updateBadge();
+}
+
+// ════════════════════════════════════════════
+//  BADGE
+// ════════════════════════════════════════════
+function updateBadge(){
+  const all=loadVales();
+  const pend=all.filter(v=>v.estadoVale==='PENDIENTE').length;
+  document.getElementById('badgeTotal').textContent=all.length+' vale'+(all.length!==1?'s':'');
+  document.getElementById('badgePendN').textContent=pend;
+  document.getElementById('badgePend').style.display=pend>0?'inline-flex':'none';
+}
+
+// ════════════════════════════════════════════
+//  MODALES
+// ════════════════════════════════════════════
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+document.querySelectorAll('.modal-bg').forEach(bg=>{
+  bg.addEventListener('click',e=>{if(e.target===bg)closeModal(bg.id);});
+});
+
+// ════════════════════════════════════════════
+//  COMPARTIR WHATSAPP
+// ════════════════════════════════════════════
+function buildWspText(v){
+  const isRet=v.tipo==='RET';
+  const tipoLabel=isRet?'RETORNO DE MATERIAL':'REQUERIMIENTO DE MATERIAL';
+  const tipoIco=isRet?'📥':'📤';
+  const estadoIco=v.estadoVale==='AUTORIZADO'?'✅':v.estadoVale==='RECHAZADO'?'❌':'⏳';
+  const solLabel=isRet?'Devuelto por':'Solicitado por';
+
+  let ubic=`Área ${v.area}`;
+  if(v.sector&&v.sector!=='—') ubic+=` · ${v.sector}`;
+  if(v.frente&&v.frente!=='—') ubic+=` › ${v.frente}`;
+
+  let mats='';
+  v.materiales.forEach((m,i)=>{
+    mats+=`\n${i+1}. ${m.name} — *${m.qty} ${m.unit}*`;
+  });
+
+  let extra='';
+  if(isRet&&v.estadoMaterial) extra+=`\n📦 *Estado material:* ${v.estadoMaterial}`;
+  if(v.obs) extra+=`\n📝 ${v.obs}`;
+  if(!isRet) extra+=`\n\n🔔 *Por favor Planeamiento y almacén confirmar la solicitud del pedido.*`;
+
+  let autLinea='';
+  if(v.estadoVale==='AUTORIZADO') autLinea=`\n✅ *Autorizado por:* ${v.autorizado} (${v.autorizadoFecha||''})`;
+  if(v.estadoVale==='RECHAZADO'){
+    autLinea=`\n❌ *Rechazado por:* ${v.autorizado||'—'}`;
+    if(v.rechazadoMotivo) autLinea+=`\n   Motivo: ${v.rechazadoMotivo}`;
+  }
+
+  return `${tipoIco} *${tipoLabel}*
+*Vale:* ${v.valeNum}   ${estadoIco} ${v.estadoVale}
+
+📍 *Ubicación:* ${ubic}
+👷 *${solLabel}:* ${v.solicitado}${v.actividad?`\n🛠 *Actividad:* ${v.actividad}`:''}
+📅 *Fecha:* ${v.fecha}   🕐 ${v.hora}
+
+*MATERIALES (${v.materiales.length}):*${mats}${extra}${autLinea}
+
+_Sostenimiento y Mantenimiento de Talud_`;
+}
+
+let wspText='';
+function shareWsp(id){
+  const v=loadVales().find(x=>x.id===id);
+  if(!v)return;
+  wspText=buildWspText(v);
+  document.getElementById('wspText').textContent=wspText;
+  const btn=document.getElementById('btnCopy');
+  btn.textContent='📋 Copiar mensaje';
+  btn.className='btn-copy';
+  document.getElementById('modalWsp').classList.add('show');
+}
+function copyWsp(){
+  if(!wspText)return;
+  const btn=document.getElementById('btnCopy');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(wspText).then(()=>{
+      btn.textContent='✅ ¡Copiado!';btn.className='btn-copy copied';
+      setTimeout(()=>{btn.textContent='📋 Copiar mensaje';btn.className='btn-copy';},2500);
+    }).catch(()=>fallbackCopy(btn));
+  } else fallbackCopy(btn);
+}
+function fallbackCopy(btn){
+  const ta=document.createElement('textarea');
+  ta.value=wspText;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');btn.textContent='✅ ¡Copiado!';btn.className='btn-copy copied';
+    setTimeout(()=>{btn.textContent='📋 Copiar mensaje';btn.className='btn-copy';},2500);}
+  catch(e){alert('No se pudo copiar automáticamente. Selecciona el texto manualmente.');}
+  document.body.removeChild(ta);
+}
+
+// ════════════════════════════════════════════
+//  EXPORT EXCEL (formato tabla, para seguimiento de almacén)
+// ════════════════════════════════════════════
+function exportExcel(){
+  const all=loadVales();
+  if(!all.length){alert('No hay vales para exportar.');return;}
+  const headers=['Vale','Tipo','Estado','Fecha','Hora','Área','Sector','Frente','Solicitado/Devuelto por','Actividad','Autorizado/Rechazado por','Fecha Autorización','Motivo Rechazo','Ítem','Código','Material','Unidad','Cantidad','Estado Material','Observaciones'];
+  const rows=[headers];
+  all.forEach(v=>{
+    v.materiales.forEach((m,i)=>{
+      rows.push([v.valeNum,v.tipo,v.estadoVale,v.fecha,v.hora,v.area,v.sector||'',v.frente||'',v.solicitado,v.actividad||'',v.autorizado||'',v.autorizadoFecha||'',v.rechazadoMotivo||'',i+1,m.code,m.name,m.unit,Number(m.qty)||m.qty,v.estadoMaterial||'',v.obs||'']);
+    });
+  });
+
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+
+  // Rango de la tabla y autofiltro (encabezados ordenables/filtrables en Excel)
+  const range={s:{r:0,c:0},e:{r:rows.length-1,c:headers.length-1}};
+  ws['!ref']=XLSX.utils.encode_range(range);
+  ws['!autofilter']={ref:XLSX.utils.encode_range(range)};
+  ws['!freeze']={xSplit:0,ySplit:1};
+  ws['!panes']=[{ySplit:1,topLeftCell:'A2',activePane:'bottomLeft',state:'frozen'}];
+
+  // Ancho de columnas
+  ws['!cols']=[
+    {wch:10},{wch:8},{wch:12},{wch:11},{wch:7},{wch:8},{wch:14},{wch:16},
+    {wch:22},{wch:28},{wch:22},{wch:16},{wch:18},{wch:6},{wch:16},{wch:30},
+    {wch:8},{wch:10},{wch:14},{wch:24}
+  ];
+
+  // Estilo del encabezado
+  for(let c=0;c<headers.length;c++){
+    const addr=XLSX.utils.encode_cell({r:0,c});
+    if(ws[addr]) ws[addr].s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'1E3A5F'}},alignment:{horizontal:'center',vertical:'center'}};
+  }
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Vales');
+  XLSX.writeFile(wb,'vales_talud_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ════════════════════════════════════════════
+//  EXPORT CSV
+// ════════════════════════════════════════════
+function exportCSV(){
+  const all=loadVales();
+  if(!all.length){alert('No hay vales para exportar.');return;}
+  const rows=[['Vale','Tipo','Estado','Fecha','Hora','Área','Sector','Frente','Solicitado/Devuelto por','Actividad','Autorizado/Rechazado por','Fecha Autorización','Motivo Rechazo','Ítem','Código','Material','Unidad','Cantidad','Estado Material','Observaciones']];
+  all.forEach(v=>{
+    v.materiales.forEach((m,i)=>{
+      rows.push([v.valeNum,v.tipo,v.estadoVale,v.fecha,v.hora,v.area,v.sector||'',v.frente||'',v.solicitado,v.actividad||'',v.autorizado||'',v.autorizadoFecha||'',v.rechazadoMotivo||'',i+1,m.code,m.name,m.unit,m.qty,v.estadoMaterial||'',v.obs||'']);
+    });
+  });
+  const csv=rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='vales_talud_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+// Corrige selects con toggleOtro genérico que no se usó — reemplaza por directos:
+document.getElementById('reqSolicitado').addEventListener('change',()=>toggleOtroSol('req'));
+document.getElementById('retSolicitado').addEventListener('change',()=>toggleOtroSol('ret'));
+
+init();
+</script>
+</body>
+</html>
