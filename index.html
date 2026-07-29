@@ -888,21 +888,16 @@ function getActividad(){
 const HORA_LIMITE=14; // 2:00 PM
 function dentroDeHorario(){return new Date().getHours()<HORA_LIMITE;}
 function actualizarEstadoHorario(){
-  const bloqueado=!dentroDeHorario();
-  const btnReq=document.getElementById('btnSubmitReq');
-  const btnRet=document.getElementById('btnSubmitRet');
+  const fuera=!dentroDeHorario();
   const noteReq=document.getElementById('reqHoraNote');
   const noteRet=document.getElementById('retHoraNote');
-  const msg='⛔ Fuera de horario: solo se pueden generar vales hasta las 2:00 PM.';
-  if(btnReq){btnReq.disabled=bloqueado;btnReq.style.opacity=bloqueado?'0.5':'';btnReq.style.cursor=bloqueado?'not-allowed':'';}
-  if(btnRet){btnRet.disabled=bloqueado;btnRet.style.opacity=bloqueado?'0.5':'';btnRet.style.cursor=bloqueado?'not-allowed':'';}
-  if(noteReq) noteReq.innerHTML=bloqueado?`<b style="color:var(--red)">${msg}</b>`:'Campos con <span style="color:var(--red)">*</span> son obligatorios';
-  if(noteRet) noteRet.innerHTML=bloqueado?`<b style="color:var(--red)">${msg}</b>`:'Campos con <span style="color:var(--red)">*</span> son obligatorios';
+  const msg='⚠️ Fuera de horario: este vale se emitirá después de las 2:00 PM y quedará marcado como tal.';
+  if(noteReq) noteReq.innerHTML=fuera?`<b style="color:var(--amber,#b45309)">${msg}</b>`:'Campos con <span style="color:var(--red)">*</span> son obligatorios';
+  if(noteRet) noteRet.innerHTML=fuera?`<b style="color:var(--amber,#b45309)">${msg}</b>`:'Campos con <span style="color:var(--red)">*</span> son obligatorios';
 }
 setInterval(actualizarEstadoHorario,60000);
 
 function submit(pnl){
-  if(!dentroDeHorario()){alert('⛔ Solo se pueden generar vales hasta las 2:00 PM. Por favor intenta antes de esa hora.');actualizarEstadoHorario();return;}
   let ok=true;
   const area=document.getElementById(pnl+'Area').value;
   document.getElementById(pnl+'ErrArea').classList.toggle('show',!area);if(!area)ok=false;
@@ -933,6 +928,7 @@ function submit(pnl){
     materiales:valid.map(l=>({code:l.mat.code,name:l.mat.name,unit:l.mat.unit,qty:l.qty})),
     obs,estadoMaterial:estado,
     estadoVale:'PENDIENTE',
+    fueraDeHorario:!dentroDeHorario(),
     autorizado:null,autorizadoFecha:null,rechazadoMotivo:null,
     createdAt:new Date().toISOString()
   };
@@ -950,6 +946,7 @@ function showConfirmModal(d){
   d.materiales.forEach((m,i)=>{mats+=`<div class="mat-list-item"><span style="color:#9ca3af;width:18px">${i+1}.</span><b>[${m.code}]</b>&nbsp;${m.name}&nbsp;— <b>${m.qty} ${m.unit}</b></div>`;});
   document.getElementById('mSum').innerHTML=`
     <b>Vale:</b> ${d.valeNum} &nbsp;<span class="est-pill PENDIENTE">⏳ PENDIENTE</span><br>
+    ${d.fueraDeHorario?`<div style="margin:6px 0;padding:7px 10px;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;color:#b45309;font-size:12px;font-weight:700">⚠️ Este vale se está emitiendo fuera del horario establecido (después de las 2:00 PM).</div>`:''}
     <b>${isRet?'Devuelto por':'Solicitado por'}:</b> ${d.solicitado}<br>
     <b>Área:</b> ${d.area}${d.sector?' · '+d.sector:''}${d.frente?' › '+d.frente:''}<br>
     ${d.actividad?`<b>Actividad:</b> ${d.actividad}<br>`:''}
@@ -1037,11 +1034,13 @@ function renderList(){
         <span class="tipo-pill ${v.tipo}">${isRet?'RETORNO':'REQUER.'}</span>
         <span class="vale-code">${v.valeNum}</span>
         <span class="est-pill ${v.estadoVale}" style="font-size:9px">${v.estadoVale==='PENDIENTE'?'⏳':v.estadoVale==='AUTORIZADO'?'✅':'❌'} ${v.estadoVale}</span>
+        ${v.fueraDeHorario?`<span class="est-pill" style="font-size:9px;background:#fffbeb;color:#b45309">⚠️ FUERA DE HORARIO</span>`:''}
         <span class="vale-date">${v.fecha}</span>
         <span class="chevron">▾</span>
       </div>
       <div class="vale-card-body">
         <div class="vale-meta">
+          ${v.fueraDeHorario?`<span style="color:#b45309;font-weight:700">⚠️ Emitido fuera del horario establecido (después de las 2:00 PM)</span><br>`:''}
           <b>${isRet?'Devuelto por':'Solicitado por'}:</b> ${v.solicitado}<br>
           <b>Área:</b> ${v.area}${v.sector?' · '+v.sector:''}${v.frente?' › '+v.frente:''}<br>
           ${v.actividad?`<b>Actividad:</b> ${v.actividad}<br>`:''}
@@ -1176,6 +1175,7 @@ function buildWspText(v){
   });
 
   let extra='';
+  if(v.fueraDeHorario) extra+=`\n⚠️ *Emitido fuera del horario establecido (después de las 2:00 PM)*`;
   if(isRet&&v.estadoMaterial) extra+=`\n📦 *Estado material:* ${v.estadoMaterial}`;
   if(v.obs) extra+=`\n📝 ${v.obs}`;
   if(!isRet) extra+=`\n\n🔔 *Por favor Planeamiento y almacén confirmar la solicitud del pedido.*`;
@@ -1236,11 +1236,11 @@ function fallbackCopy(btn){
 function exportExcel(){
   const all=loadVales();
   if(!all.length){alert('No hay vales para exportar.');return;}
-  const headers=['Vale','Tipo','Estado','Fecha','Hora','Área','Sector','Frente','Solicitado/Devuelto por','Actividad','Autorizado/Rechazado por','Fecha Autorización','Motivo Rechazo','Ítem','Código','Material','Unidad','Cantidad','Estado Material','Observaciones'];
+  const headers=['Vale','Tipo','Estado','Fecha','Hora','Fuera de Horario','Área','Sector','Frente','Solicitado/Devuelto por','Actividad','Autorizado/Rechazado por','Fecha Autorización','Motivo Rechazo','Ítem','Código','Material','Unidad','Cantidad','Estado Material','Observaciones'];
   const rows=[headers];
   all.forEach(v=>{
     v.materiales.forEach((m,i)=>{
-      rows.push([v.valeNum,v.tipo,v.estadoVale,v.fecha,v.hora,v.area,v.sector||'',v.frente||'',v.solicitado,v.actividad||'',v.autorizado||'',v.autorizadoFecha||'',v.rechazadoMotivo||'',i+1,m.code,m.name,m.unit,Number(m.qty)||m.qty,v.estadoMaterial||'',v.obs||'']);
+      rows.push([v.valeNum,v.tipo,v.estadoVale,v.fecha,v.hora,v.fueraDeHorario?'Sí':'No',v.area,v.sector||'',v.frente||'',v.solicitado,v.actividad||'',v.autorizado||'',v.autorizadoFecha||'',v.rechazadoMotivo||'',i+1,m.code,m.name,m.unit,Number(m.qty)||m.qty,v.estadoMaterial||'',v.obs||'']);
     });
   });
 
@@ -1255,7 +1255,7 @@ function exportExcel(){
 
   // Ancho de columnas
   ws['!cols']=[
-    {wch:10},{wch:8},{wch:12},{wch:11},{wch:7},{wch:8},{wch:14},{wch:16},
+    {wch:10},{wch:8},{wch:12},{wch:11},{wch:7},{wch:14},{wch:8},{wch:14},{wch:16},
     {wch:22},{wch:28},{wch:22},{wch:16},{wch:18},{wch:6},{wch:16},{wch:30},
     {wch:8},{wch:10},{wch:14},{wch:24}
   ];
@@ -1277,10 +1277,10 @@ function exportExcel(){
 function exportCSV(){
   const all=loadVales();
   if(!all.length){alert('No hay vales para exportar.');return;}
-  const rows=[['Vale','Tipo','Estado','Fecha','Hora','Área','Sector','Frente','Solicitado/Devuelto por','Actividad','Autorizado/Rechazado por','Fecha Autorización','Motivo Rechazo','Ítem','Código','Material','Unidad','Cantidad','Estado Material','Observaciones']];
+  const rows=[['Vale','Tipo','Estado','Fecha','Hora','Fuera de Horario','Área','Sector','Frente','Solicitado/Devuelto por','Actividad','Autorizado/Rechazado por','Fecha Autorización','Motivo Rechazo','Ítem','Código','Material','Unidad','Cantidad','Estado Material','Observaciones']];
   all.forEach(v=>{
     v.materiales.forEach((m,i)=>{
-      rows.push([v.valeNum,v.tipo,v.estadoVale,v.fecha,v.hora,v.area,v.sector||'',v.frente||'',v.solicitado,v.actividad||'',v.autorizado||'',v.autorizadoFecha||'',v.rechazadoMotivo||'',i+1,m.code,m.name,m.unit,m.qty,v.estadoMaterial||'',v.obs||'']);
+      rows.push([v.valeNum,v.tipo,v.estadoVale,v.fecha,v.hora,v.fueraDeHorario?'Sí':'No',v.area,v.sector||'',v.frente||'',v.solicitado,v.actividad||'',v.autorizado||'',v.autorizadoFecha||'',v.rechazadoMotivo||'',i+1,m.code,m.name,m.unit,m.qty,v.estadoMaterial||'',v.obs||'']);
     });
   });
   const csv=rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
