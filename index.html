@@ -102,6 +102,7 @@ select:disabled{background-color:#f3f4f6;color:#9ca3af;cursor:not-allowed;opacit
 .ldi-name{font-size:12px;color:var(--gray);margin-top:1px}
 .ldi-cat{font-size:10px;color:#9ca3af}
 .line-unit{padding:7px 6px;border:1.5px solid var(--border);border-radius:7px;font-size:11px;color:#6b7280;background:#f3f4f6;text-align:center;font-weight:600}
+.line-unit-sel{width:100%;padding:6px 3px;border:1.5px solid var(--blue-mid);border-radius:7px;font-size:10px;color:var(--blue-mid);background:var(--blue-light);text-align:center;text-align-last:center;font-weight:700;outline:none;-webkit-appearance:none;font-family:inherit}
 .line-qty{width:100%;padding:7px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-weight:700;color:var(--gray);background:#fff;outline:none;font-family:inherit;text-align:right}
 .line-qty:focus{border-color:var(--blue-mid)}
 .line-qty:disabled{background:#f9fafb;color:#d1d5db}
@@ -647,6 +648,7 @@ const MATERIALES=[
   {code:'M80.4',name:'Malla Minax 80/4 D=2.5x20m',cat:'MALLA',unit:'M2'},
   {code:'M80.4',name:'Malla Minax 80/4 D=3.3x15.15m',cat:'MALLA',unit:'M2'},
   {code:'MALLA_Ol',name:'Malla Olimpica',cat:'MALLA',unit:'M2'},
+  {code:'M_RASHELL',name:'Malla Rashell',cat:'MALLA',unit:'ROLLO',units:['ROLLO','M2']},
   {code:'RATCHER',name:'MALLA RATCHER 4.2 x 100MT',cat:'MALLA',unit:'M2'},
   {code:'T65.3',name:'Malla Tecco G65/3 3.9x30m',cat:'MALLA',unit:'M2'},
   {code:'T65.4',name:'Malla Tecco G65/4 2.50x20m',cat:'MALLA',unit:'M2'},
@@ -756,7 +758,7 @@ function init(){
 function addLine(pnl){
   if(lines[pnl].length>=MAX_LINES){alert('Máximo '+MAX_LINES+' materiales por vale.');return;}
   const id=Date.now()+'_'+Math.random().toString(36).slice(2,5);
-  lines[pnl].push({id,mat:null,qty:null});
+  lines[pnl].push({id,mat:null,qty:null,unit:null});
   renderLines(pnl);
   updateAddBtn(pnl);
   setTimeout(()=>{const el=document.getElementById('ls_'+pnl+'_'+id);if(el)el.focus();},80);
@@ -765,6 +767,21 @@ function removeLine(pnl,id){
   lines[pnl]=lines[pnl].filter(l=>l.id!==id);
   if(!lines[pnl].length) addLine(pnl);
   else{renderLines(pnl);updateAddBtn(pnl);}
+}
+function buildUnitCell(pnl,ln){
+  if(ln.mat&&ln.mat.units){
+    const sel=document.createElement('select');
+    sel.className='line-unit-sel';sel.id='lu_'+pnl+'_'+ln.id;
+    ln.mat.units.forEach(u=>{
+      const op=document.createElement('option');op.value=u;op.textContent=u;
+      if((ln.unit||ln.mat.unit)===u)op.selected=true;
+      sel.appendChild(op);
+    });
+    sel.addEventListener('change',()=>{ln.unit=sel.value;});
+    return sel;
+  }
+  const uc=document.createElement('div');uc.className='line-unit';uc.id='lu_'+pnl+'_'+ln.id;uc.textContent=ln.mat?ln.mat.unit:'—';
+  return uc;
 }
 function renderLines(pnl){
   const c=document.getElementById(pnl+'Lines');c.innerHTML='';
@@ -783,7 +800,7 @@ function renderLines(pnl){
     const dp=document.createElement('div');dp.className='line-drop';dp.id='ld_'+pnl+'_'+ln.id;
     mc.appendChild(si);mc.appendChild(dp);
     // unit
-    const uc=document.createElement('div');uc.className='line-unit';uc.id='lu_'+pnl+'_'+ln.id;uc.textContent=ln.mat?ln.mat.unit:'—';
+    const uc=buildUnitCell(pnl,ln);
     // qty
     const qi=document.createElement('input');qi.type='number';qi.min='0.01';qi.step='0.01';
     qi.className='line-qty';qi.id='lq_'+pnl+'_'+ln.id;qi.disabled=!ln.mat;qi.placeholder='0';qi.value=ln.qty||'';
@@ -803,7 +820,7 @@ function openDrop(pnl,id,q){
   if(!res.length){dp.innerHTML='<div class="line-drop-item" style="color:#9ca3af;font-size:12px">Sin resultados</div>';}
   else res.slice(0,25).forEach(m=>{
     const it=document.createElement('div');it.className='line-drop-item';
-    it.innerHTML=`<div class="ldi-code">${m.code}</div><div class="ldi-name">${m.name}</div><div class="ldi-cat">${m.cat} · ${m.unit}</div>`;
+    it.innerHTML=`<div class="ldi-code">${m.code}</div><div class="ldi-name">${m.name}</div><div class="ldi-cat">${m.cat} · ${m.units?m.units.join('/'):m.unit}</div>`;
     it.onmousedown=e=>{e.preventDefault();selectMat(pnl,id,m);};
     dp.appendChild(it);
   });
@@ -813,10 +830,11 @@ function openDrop(pnl,id,q){
 function closeDrop(pnl,id){const d=document.getElementById('ld_'+pnl+'_'+id);if(d)d.classList.remove('open');}
 function selectMat(pnl,id,mat){
   const ln=lines[pnl].find(l=>l.id===id);if(!ln)return;
-  ln.mat=mat;ln.qty=null;
+  ln.mat=mat;ln.qty=null;ln.unit=mat.units?mat.units[0]:mat.unit;
   const si=document.getElementById('ls_'+pnl+'_'+id);
   if(si){si.value=`[${mat.code}] ${mat.name}`;si.classList.add('selected');}
-  const uc=document.getElementById('lu_'+pnl+'_'+id);if(uc)uc.textContent=mat.unit;
+  const ucOld=document.getElementById('lu_'+pnl+'_'+id);
+  if(ucOld){const ucNew=buildUnitCell(pnl,ln);ucOld.replaceWith(ucNew);}
   const qi=document.getElementById('lq_'+pnl+'_'+id);if(qi){qi.disabled=false;qi.focus();}
   closeDrop(pnl,id);
   const row=document.getElementById('lrow_'+pnl+'_'+id);if(row)row.classList.add('filled');
@@ -925,7 +943,7 @@ function submit(pnl){
     hora:document.getElementById(pnl+'Hora').value,
     area,sector,frente,solicitado:sol,
     actividad,
-    materiales:valid.map(l=>({code:l.mat.code,name:l.mat.name,unit:l.mat.unit,qty:l.qty})),
+    materiales:valid.map(l=>({code:l.mat.code,name:l.mat.name,unit:l.unit||l.mat.unit,qty:l.qty})),
     obs,estadoMaterial:estado,
     estadoVale:'PENDIENTE',
     fueraDeHorario:!dentroDeHorario(),
